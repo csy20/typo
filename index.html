@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Speed Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Style for the text to be typed */
+        .sample-text span {
+            transition: background-color 0.1s ease, color 0.1s ease;
+        }
+        /* Class for correctly typed characters */
+        .correct {
+            color: #4ade80; /* Tailwind green-400 */
+        }
+        /* Class for incorrectly typed characters */
+        .incorrect {
+            color: #f87171; /* Tailwind red-400 */
+            text-decoration: underline;
+            text-decoration-color: #f87171; /* Tailwind red-400 */
+        }
+        /* Class for the current character cursor */
+        .current {
+            background-color: #60a5fa; /* Tailwind blue-400 */
+            color: white;
+            border-radius: 2px;
+            padding: 0 1px; /* Add slight padding for visibility */
+        }
+        /* Style for the input area when focused */
+        .input-area:focus {
+            outline: none;
+            border-color: #60a5fa; /* Tailwind blue-400 */
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5); /* Focus ring */
+        }
+        /* Style disabled textarea */
+        .input-area:disabled {
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+            cursor: not-allowed;
+        }
+        /* Button styles */
+        .btn {
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .btn:hover {
+            filter: brightness(90%);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen px-4">
+
+    <div class="container bg-white p-6 md:p-8 rounded-lg shadow-xl max-w-3xl w-full">
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">Typing Speed Test</h1>
+
+        <div id="sample-text-container" class="sample-text bg-gray-50 p-4 rounded-md text-lg md:text-xl leading-relaxed text-gray-700 mb-4 border border-gray-200 whitespace-pre-wrap break-words">
+            Loading text...
+        </div>
+
+        <textarea id="input-area" rows="6" class="input-area w-full p-4 border border-gray-300 rounded-md text-lg md:text-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+
+        <div class="flex flex-wrap justify-around items-center mt-6 mb-6 text-center gap-4">
+            <div class="p-3 bg-blue-100 rounded-lg shadow-sm min-w-[100px]">
+                <div class="text-sm font-medium text-blue-700">Time</div>
+                <div id="time" class="text-2xl font-bold text-blue-900">0<span class="text-base">s</span></div>
+            </div>
+            <div class="p-3 bg-green-100 rounded-lg shadow-sm min-w-[100px]">
+                <div class="text-sm font-medium text-green-700">WPM</div>
+                <div id="wpm" class="text-2xl font-bold text-green-900">0</div>
+            </div>
+            <div class="p-3 bg-yellow-100 rounded-lg shadow-sm min-w-[100px]">
+                <div class="text-sm font-medium text-yellow-700">Accuracy</div>
+                <div id="accuracy" class="text-2xl font-bold text-yellow-900">0<span class="text-base">%</span></div>
+            </div>
+             <div class="p-3 bg-red-100 rounded-lg shadow-sm min-w-[100px]">
+                <div class="text-sm font-medium text-red-700">Errors</div>
+                <div id="errors" class="text-2xl font-bold text-red-900">0</div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button id="reset-button" class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                Reset Test
+            </button>
+        </div>
+
+        <div id="message-box" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm w-full">
+                <h2 class="text-xl font-bold mb-4">Test Completed!</h2>
+                <p id="final-wpm" class="mb-2"></p>
+                <p id="final-accuracy" class="mb-4"></p>
+                <button id="close-message-box" class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">
+                    Try Again
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // DOM Elements
+        const sampleTextContainer = document.getElementById('sample-text-container');
+        const inputArea = document.getElementById('input-area');
+        const timeDisplay = document.getElementById('time');
+        const wpmDisplay = document.getElementById('wpm');
+        const accuracyDisplay = document.getElementById('accuracy');
+        const errorsDisplay = document.getElementById('errors');
+        const resetButton = document.getElementById('reset-button');
+        const messageBox = document.getElementById('message-box');
+        const finalWpmDisplay = document.getElementById('final-wpm');
+        const finalAccuracyDisplay = document.getElementById('final-accuracy');
+        const closeMessageBoxButton = document.getElementById('close-message-box');
+
+        // Sample texts array
+        const sampleTexts = [
+            "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet. Practice makes perfect, so keep typing!",
+            "Programming is the process of creating instructions for computers to perform specific tasks. It involves logic, problem-solving, and creativity.",
+            "The internet connects billions of devices worldwide, enabling communication, information sharing, and commerce on an unprecedented scale.",
+            "Artificial intelligence aims to create machines that can perform tasks typically requiring human intelligence, such as learning and decision-making.",
+            "Data science involves extracting knowledge and insights from structured and unstructured data using scientific methods, processes, algorithms, and systems.",
+            "Always remember to check your posture while typing for long periods. Good ergonomics can prevent strain and improve comfort.",
+            "Learning a new skill takes time and dedication. Be patient with yourself and celebrate small victories along the way.",
+            "The world is full of fascinating places to explore and diverse cultures to experience. Travel broadens the mind and enriches the soul."
+        ];
+
+        // Game state variables
+        let currentText = '';
+        let textChars = []; // Array of span elements for each character
+        let startTime = null;
+        let timerInterval = null;
+        let errors = 0;
+        let typedChars = 0;
+        let correctChars = 0;
+        let testActive = false;
+        let currentIndex = 0; // Tracks the current character index the user should type
+
+        // --- Functions ---
+
+        // Function to select and display a new sample text
+        function loadNewText() {
+            // Choose a random text different from the current one if possible
+            let newText = currentText;
+            if (sampleTexts.length > 1) {
+                while (newText === currentText) {
+                    const randomIndex = Math.floor(Math.random() * sampleTexts.length);
+                    newText = sampleTexts[randomIndex];
+                }
+            } else {
+                 const randomIndex = Math.floor(Math.random() * sampleTexts.length);
+                 newText = sampleTexts[randomIndex];
+            }
+            currentText = newText;
+            sampleTextContainer.innerHTML = ''; // Clear previous text
+            textChars = []; // Reset character spans array
+
+            // Wrap each character in a span and add to the container
+            currentText.split('').forEach(char => {
+                const charSpan = document.createElement('span');
+                charSpan.innerText = char;
+                sampleTextContainer.appendChild(charSpan);
+                textChars.push(charSpan); // Store span reference
+            });
+            // Highlight the first character
+            if (textChars.length > 0) {
+                textChars[0].classList.add('current');
+            }
+            currentIndex = 0; // Reset index
+        }
+
+        // Function to start the timer
+        function startTimer() {
+            if (startTime === null) { // Only start if not already started
+                startTime = new Date();
+                testActive = true;
+                timerInterval = setInterval(updateTimer, 1000); // Update every second
+            }
+        }
+
+        // Function to update the timer display and calculate WPM/Accuracy
+        function updateTimer() {
+            if (!testActive) return; // Stop if test is not active
+
+            const currentTime = new Date();
+            const elapsedTime = Math.floor((currentTime - startTime) / 1000); // Time in seconds
+            timeDisplay.innerHTML = `${elapsedTime}<span class="text-base">s</span>`;
+
+            // Calculate WPM (Words Per Minute)
+            // Standard calculation: (characters typed / 5) / time in minutes
+            const timeInMinutes = elapsedTime / 60;
+            // Only calculate WPM if time has passed to avoid division by zero
+            const currentWpm = timeInMinutes > 0 ? Math.round((correctChars / 5) / timeInMinutes) : 0;
+            wpmDisplay.textContent = currentWpm;
+
+            // Calculate Accuracy
+            const currentAccuracy = typedChars > 0 ? Math.round((correctChars / typedChars) * 100) : 0;
+            accuracyDisplay.innerHTML = `${currentAccuracy}<span class="text-base">%</span>`;
+        }
+
+        // Function to handle user input
+        function handleInput() {
+            if (!testActive && inputArea.value.length > 0) {
+                startTimer(); // Start timer on first keypress
+            }
+            if (!testActive && inputArea.value.length === 0) {
+                // If user clears input before starting, do nothing special yet
+                return;
+            }
+            if (!testActive) return; // Don't process if timer hasn't started
+
+            const inputText = inputArea.value;
+            const inputLength = inputText.length;
+            typedChars = inputLength; // Update total typed characters
+
+            // Remove previous 'current' marker
+            if (currentIndex < textChars.length) {
+                 textChars[currentIndex].classList.remove('current');
+            }
+
+            correctChars = 0; // Recalculate correct chars on each input
+            errors = 0; // Recalculate errors
+
+            // Compare input with sample text
+            textChars.forEach((charSpan, index) => {
+                const typedChar = inputText[index];
+
+                // Reset classes first
+                charSpan.classList.remove('correct', 'incorrect', 'current');
+
+                if (typedChar == null) { // Character not yet typed
+                    // If this is the next character to be typed, mark it as current
+                    if (index === inputLength) {
+                        charSpan.classList.add('current');
+                        currentIndex = index; // Update current index
+                    }
+                } else if (typedChar === charSpan.innerText) { // Correct character
+                    charSpan.classList.add('correct');
+                    correctChars++;
+                } else { // Incorrect character
+                    charSpan.classList.add('incorrect');
+                    errors++;
+                }
+            });
+
+             // Update the errors display
+            errorsDisplay.textContent = errors;
+
+            // Update WPM/Accuracy immediately on input change as well
+            updateTimer();
+
+             // Check if test is finished (typed all characters)
+            if (inputLength === currentText.length) {
+                finishTest();
+            }
+
+            // If user deletes characters, update the 'current' marker position
+            if (inputLength < currentIndex && inputLength < textChars.length) {
+                 currentIndex = inputLength;
+                 textChars[currentIndex].classList.add('current');
+            } else if (inputLength >= textChars.length) {
+                 // If all chars typed, remove current marker
+                 currentIndex = textChars.length; // Move index past the end
+            }
+        }
+
+        // Function to end the test
+        function finishTest() {
+            clearInterval(timerInterval); // Stop the timer
+            testActive = false;
+            inputArea.disabled = true; // Disable input area
+
+            // Final calculations
+            const finalTime = Math.floor((new Date() - startTime) / 1000);
+            const finalWpm = finalTime > 0 ? Math.round((correctChars / 5) / (finalTime / 60)) : 0;
+            const finalAccuracy = typedChars > 0 ? Math.round((correctChars / typedChars) * 100) : 0;
+
+            // Update displays one last time
+            wpmDisplay.textContent = finalWpm;
+            accuracyDisplay.innerHTML = `${finalAccuracy}<span class="text-base">%</span>`;
+            errorsDisplay.textContent = errors;
+
+            // Show results message box
+            finalWpmDisplay.textContent = `Your Speed: ${finalWpm} WPM`;
+            finalAccuracyDisplay.textContent = `Accuracy: ${finalAccuracy}%`;
+            messageBox.classList.remove('hidden');
+        }
+
+
+        // Function to reset the test
+        function resetTest() {
+            clearInterval(timerInterval); // Stop any running timer
+            startTime = null;
+            timerInterval = null;
+            errors = 0;
+            typedChars = 0;
+            correctChars = 0;
+            testActive = false;
+            currentIndex = 0;
+
+            // Reset displays
+            timeDisplay.innerHTML = '0<span class="text-base">s</span>';
+            wpmDisplay.textContent = '0';
+            accuracyDisplay.innerHTML = '0<span class="text-base">%</span>';
+            errorsDisplay.textContent = '0';
+
+            // Clear input area and enable it
+            inputArea.value = '';
+            inputArea.disabled = false;
+
+            // Load a new text sample
+            loadNewText();
+
+             // Hide message box if it's open
+            messageBox.classList.add('hidden');
+
+            // Ensure focus goes back to the input area for immediate typing
+            inputArea.focus();
+        }
+
+        // --- Event Listeners ---
+
+        // Listen for input in the textarea
+        inputArea.addEventListener('input', handleInput);
+
+        // Listen for click on the reset button
+        resetButton.addEventListener('click', resetTest);
+
+         // Listen for click on the close button in the message box
+        closeMessageBoxButton.addEventListener('click', () => {
+             messageBox.classList.add('hidden');
+             resetTest(); // Reset the test when closing the message box
+        });
+
+
+        // --- Initial Setup ---
+
+        // Load the first sample text when the page loads
+        window.onload = () => {
+            loadNewText();
+            inputArea.focus(); // Focus the input area on load
+        };
+
+    </script>
+
+</body>
+</html>
